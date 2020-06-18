@@ -20,7 +20,7 @@ pipeline {
                 configFileProvider([configFile(fileId: 'leyton-maven-nexus-config', variable: 'MAVEN_SETTINGS_XML')]) {
                     sh '''
                     echo "Build java - Begin"
-                    mvn -U --batch-mode -s $MAVEN_SETTINGS_XML clean install
+                    mvn -U --batch-mode -s $MAVEN_SETTINGS_XML clean install -DskipTests
                     echo "Build java - End"
                     '''
                 }
