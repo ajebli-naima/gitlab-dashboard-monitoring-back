@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ApplicationServiceImpl implements ApplicationService {
@@ -41,9 +42,9 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         if (file != null) {
             applicationDTO.setPhoto(file.getBytes());
-        } else {
-            Application appOrgin = applicationRepository.findById(applicationDTO.getId()).get();
-            applicationDTO.setPhoto(appOrgin.getPhoto());
+        } else if (applicationDTO.getId() != null){
+            Optional<Application> appOrgin = applicationRepository.findById(applicationDTO.getId());
+            appOrgin.ifPresent(application -> applicationDTO.setPhoto(application.getPhoto()));
         }
 
         Application application = applicationMapper.toApplication(applicationDTO);
