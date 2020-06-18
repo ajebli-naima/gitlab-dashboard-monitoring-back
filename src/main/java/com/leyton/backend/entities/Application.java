@@ -1,5 +1,6 @@
 package com.leyton.backend.entities;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -12,11 +13,17 @@ public class Application {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String nameApplication;
+    @Column(length = 500)
     private String urlGitlab;
+    @Column(length = 500)
     private String urlJenkins;
+    @Column(length = 500)
     private String urlSonar;
+    @Column(length = 500)
     private String urlGrafana;
+    @Column(length = 500)
     private String urlGraylog;
+    @Column(length = 500)
     private String urlDeployment;
     @Lob
     private byte[] photo;
