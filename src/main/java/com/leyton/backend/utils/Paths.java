@@ -9,5 +9,8 @@ public class Paths {
     public static final String APPLICATION = "/application";
     public static final String FIND_ALL = "/findAll";
 
+    /* GitlabController */
+    public static final String GITLAB = "/gitlab";
+
 
 }
