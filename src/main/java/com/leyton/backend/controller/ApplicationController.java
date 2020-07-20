@@ -38,6 +38,7 @@ public class ApplicationController {
     @GetMapping(path = "/{idApplication}")
     public Application findApplication(@PathVariable("idApplication") Long idApplication) {
         Application application = applicationService.findApplication(idApplication);
+        application.setPhoto(null);
         return application;
     }
 
