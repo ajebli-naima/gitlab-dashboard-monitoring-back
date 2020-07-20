@@ -12,6 +12,7 @@ import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Commit;
 import org.gitlab4j.api.models.MergeRequest;
 import org.gitlab4j.api.models.Project;
+import org.gitlab4j.api.models.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,7 +99,6 @@ public class GitlabServiceImpl implements GitlabService {
             long daysDiff = TimeUnit.DAYS.convert(diff, TimeUnit.MILLISECONDS);
             LOGGER.info("Days diff : " + daysDiff);
 
-            Map<Date, Integer> commitPerUserSize;
             DateFormat dateFormat;
 
             if (30 > daysDiff) {
@@ -112,25 +112,12 @@ public class GitlabServiceImpl implements GitlabService {
                 unit = "year";
             }
 
-            Map<String, List<Commit>> commitPerDay =
-                    commits.stream().collect(Collectors.groupingBy(w -> dateFormat.format(w.getCommittedDate())));
-            commitPerUserSize =
-                    commitPerDay.entrySet().stream().collect(Collectors.toMap(
-                            entry -> {
-                                try {
-                                    return dateFormat.parse(entry.getKey());
-                                } catch (ParseException e) {
-                                    e.printStackTrace();
-                                }
-                                return null;
-                            },
-                            entry -> entry.getValue().size()));
-
             Map<String, List<Commit>> commitPerUser =
                     commits.stream().collect(Collectors.groupingBy(w -> w.getCommitterEmail().split("@")[0].toLowerCase()));
 
 
             for (Map.Entry<String, List<Commit>> entry : commitPerUser.entrySet()) {
+                User user = gitLabApi.getUserApi().getUser(entry.getKey());
 
                 List<Commit> commitList = entry.getValue();
 
@@ -149,12 +136,17 @@ public class GitlabServiceImpl implements GitlabService {
                                 },
                                 item -> item.getValue().size()));
 
-                map.put(entry.getKey(), new TreeMap<>(dateIntegerMap));
+                if (user != null) {
+                    map.put(user.getName(), new TreeMap<>(dateIntegerMap));
+                } else {
+                    map.put(entry.getValue().get(0).getCommitterName(), new TreeMap<>(dateIntegerMap));
+                }
+
                 //System.out.println("Key = " + entry.getKey() +
                 //      ", Value = " + entry.getValue());
             }
-            map.put("Commit ", new TreeMap<>(commitPerUserSize));
         }
+
 
         StaticticByUnitDto staticticByUnitDto = new StaticticByUnitDto();
         staticticByUnitDto.setCommitPerUnit(map);
@@ -188,10 +180,26 @@ public class GitlabServiceImpl implements GitlabService {
                 commits.stream().collect(Collectors.groupingBy(w -> w.getCommitterEmail().split("@")[0].toLowerCase()));
 
 
-        Map<String, Integer> commitPerUserSize =
-                commitPerUser.entrySet().stream().collect(Collectors.toMap(
-                        entry -> entry.getKey(),
-                        entry -> entry.getValue().size()));
+        // Map<String, Integer> commitPerUserSize =
+        //       commitPerUser.entrySet().stream().collect(Collectors.toMap(
+        //             entry -> entry.getKey(),
+        //           entry -> entry.getValue().size()));
+
+
+        Map<String, Integer> commitPerUserSize = new HashMap<>();
+        for (Map.Entry<String, List<Commit>> entry : commitPerUser.entrySet()) {
+            User user = gitLabApi.getUserApi().getUser(entry.getKey());
+
+
+            if (user != null) {
+                commitPerUserSize.put(user.getName(), entry.getValue().size());
+            } else {
+                commitPerUserSize.put(entry.getValue().get(0).getCommitterName(), entry.getValue().size());
+            }
+
+            //System.out.println("Key = " + entry.getKey() +
+            //      ", Value = " + entry.getValue());
+        }
 
         CommitPerUserDTO commitPerUserDTO = new CommitPerUserDTO();
         commitPerUserDTO.setCommitPerUser(commitPerUserSize);
