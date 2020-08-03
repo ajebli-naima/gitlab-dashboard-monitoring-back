@@ -6,10 +6,12 @@ import com.leyton.backend.dto.StaticticByUnitDto;
 import com.leyton.backend.entities.Application;
 import com.leyton.backend.services.ApplicationService;
 import com.leyton.backend.services.GitlabService;
+import org.gitlab4j.api.Constants;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Commit;
+import org.gitlab4j.api.models.Event;
 import org.gitlab4j.api.models.MergeRequest;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.User;
@@ -22,6 +24,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,13 +49,25 @@ public class GitlabServiceImpl implements GitlabService {
 
         Application application = applicationService.findApplication(Long.valueOf(idProject));
         String path = application.getUrlGitlab().split("http://gitlab.leyton.fr/")[1];
+        List<Project> projects = gitLabApi.getGroupApi().getProjects(path);
+        if (projects.isEmpty()) {
+            projects = Arrays.asList(gitLabApi.getProjectApi().getProject(path));
+        }
 
-        gitLabApi.getUserApi().getActiveUsers();
+        List<Project> list = gitLabApi.getProjectApi().getProjects();
 
-        List<Project> projects = gitLabApi.getProjectApi().getProjects().stream().filter(project -> {
-            return project.getHttpUrlToRepo().contains(path);
-        }).collect(Collectors.toList());
 
+        List<Event> events = gitLabApi.getEventsApi().getUserEvents("fchablou",null,null,null,null, Constants.SortOrder.DESC);
+
+        List<Commit> commitArrayList = new ArrayList<>();
+        for (Project p:list) {
+            List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(p.getId());
+            for (Branch b : branches) {
+                List<Commit> commitstemp = gitLabApi.getCommitsApi().getCommits(p.getId(),
+                        b.getName(),"");
+                commitArrayList.addAll(commitstemp);
+            }
+        }
         return projects;
 
     }
