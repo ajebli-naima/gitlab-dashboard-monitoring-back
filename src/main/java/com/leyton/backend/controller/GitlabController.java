@@ -64,7 +64,6 @@ public class GitlabController {
         return staticticByUnitDto;
     }
 
-
     @PostMapping(path = "/commits")
     public CommitPerUserDTO findAllCommitsPerProject(@RequestBody FilterRequest filterRequest)
             throws GitLabApiException, ParseException {
