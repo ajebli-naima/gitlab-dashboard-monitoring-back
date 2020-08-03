@@ -21,10 +21,13 @@ import org.springframework.stereotype.Service;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -74,9 +77,26 @@ public class GitlabServiceImpl implements GitlabService {
     public StaticticByUnitDto findAllCommitsPerProjectByUnit(FilterRequest filterRequest) throws ParseException, GitLabApiException {
         this.authentificationGitlab();
 
-        List<Commit> commits = gitLabApi.getCommitsApi().
-                getCommits(filterRequest.getIdProject(),
-                        filterRequest.getIdBranch(), filterRequest.getDateFrom(), filterRequest.getDateTo());
+        List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(filterRequest.getIdProject());
+
+        List<Commit> commitArrayList = new ArrayList<>();
+        for (Branch b : branches) {
+            List<Commit> commitstemp = gitLabApi.getCommitsApi().getCommits(filterRequest.getIdProject(),
+                    b.getName(), filterRequest.getDateFrom(), filterRequest.getDateTo());
+            commitArrayList.addAll(commitstemp);
+        }
+
+        //  Map<String, List<Commit>> stringListMap =
+        //        commits.stream().collect(Collectors.groupingBy(w -> w.getId()));
+
+        //List<Commit> commits = gitLabApi.getCommitsApi().
+        //      getCommits(filterRequest.getIdProject(),
+        //            filterRequest.getIdBranch(), filterRequest.getDateFrom(), filterRequest.getDateTo());
+
+        Set<String> nameSet = new HashSet<>();
+        List<Commit> commits = commitArrayList.stream()
+                .filter(e -> nameSet.add(e.getId()))
+                .collect(Collectors.toList());
 
         Map<String, Map<Date, Integer>> map = new HashMap<>();
         String unit = "";
@@ -172,13 +192,21 @@ public class GitlabServiceImpl implements GitlabService {
             filterRequest.setDateTo(new Date());
         }
 
-        List<Commit> commits = gitLabApi.getCommitsApi().
-                getCommits(filterRequest.getIdProject(),
-                        filterRequest.getIdBranch(), filterRequest.getDateFrom(), filterRequest.getDateTo());
+        List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(filterRequest.getIdProject());
+
+        List<Commit> commitArrayList = new ArrayList<>();
+        for (Branch b : branches) {
+            List<Commit> commitstemp = gitLabApi.getCommitsApi().getCommits(filterRequest.getIdProject(),
+                    b.getName(), filterRequest.getDateFrom(), filterRequest.getDateTo());
+            commitArrayList.addAll(commitstemp);
+        }
+        Set<String> nameSet = new HashSet<>();
+        List<Commit> commits = commitArrayList.stream()
+                .filter(e -> nameSet.add(e.getId()))
+                .collect(Collectors.toList());
 
         Map<String, List<Commit>> commitPerUser =
                 commits.stream().collect(Collectors.groupingBy(w -> w.getCommitterEmail().split("@")[0].toLowerCase()));
-
 
         // Map<String, Integer> commitPerUserSize =
         //       commitPerUser.entrySet().stream().collect(Collectors.toMap(
@@ -189,16 +217,11 @@ public class GitlabServiceImpl implements GitlabService {
         Map<String, Integer> commitPerUserSize = new HashMap<>();
         for (Map.Entry<String, List<Commit>> entry : commitPerUser.entrySet()) {
             User user = gitLabApi.getUserApi().getUser(entry.getKey());
-
-
             if (user != null) {
                 commitPerUserSize.put(user.getName(), entry.getValue().size());
             } else {
                 commitPerUserSize.put(entry.getValue().get(0).getCommitterName(), entry.getValue().size());
             }
-
-            //System.out.println("Key = " + entry.getKey() +
-            //      ", Value = " + entry.getValue());
         }
 
         CommitPerUserDTO commitPerUserDTO = new CommitPerUserDTO();
