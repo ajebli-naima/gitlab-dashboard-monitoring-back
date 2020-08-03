@@ -54,6 +54,7 @@ public class GitlabServiceImpl implements GitlabService {
             projects = Arrays.asList(gitLabApi.getProjectApi().getProject(path));
         }
 
+
         List<Project> list = gitLabApi.getProjectApi().getProjects();
 
 
