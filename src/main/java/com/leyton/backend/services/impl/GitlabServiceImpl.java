@@ -12,12 +12,10 @@ import com.leyton.backend.repositories.MemberRepository;
 import com.leyton.backend.repositories.ProjectRepository;
 import com.leyton.backend.services.ApplicationService;
 import com.leyton.backend.services.GitlabService;
-import org.gitlab4j.api.Constants;
 import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Commit;
-import org.gitlab4j.api.models.Event;
 import org.gitlab4j.api.models.MergeRequest;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.User;
@@ -76,9 +74,8 @@ public class GitlabServiceImpl implements GitlabService {
             projects = Arrays.asList(gitLabApi.getProjectApi().getProject(path));
         }
 
-        this.startCron();
-
-        List<Project> list = gitLabApi.getProjectApi().getProjects();
+        //this.startCron();
+        //List<Project> list = gitLabApi.getProjectApi().getProjects();
 
         return projects;
 
@@ -312,7 +309,7 @@ public class GitlabServiceImpl implements GitlabService {
                 System.out.println("id branch" + b.getName());
                 try {
                     commits.addAll(gitLabApi.getCommitsApi().getCommits(projectList.get(i).getId(),
-                            b.getName(),""));
+                            b.getName(), ""));
                 } catch (Exception e) {
 
                 }
