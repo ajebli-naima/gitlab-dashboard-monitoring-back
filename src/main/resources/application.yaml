@@ -15,3 +15,6 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:sectorisationuser}
     password: ${SPRING_DATASOURCE_PASSWORD:sectorisationuser}
     driverClassName: com.mysql.jdbc.Driver
+
+cron:
+  initialisation: true
