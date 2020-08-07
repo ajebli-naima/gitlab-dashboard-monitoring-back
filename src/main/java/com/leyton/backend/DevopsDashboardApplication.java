@@ -20,8 +20,6 @@ import java.text.ParseException;
 @EnableScheduling
 public class DevopsDashboardApplication {
 
-    @Value("${cron.initialisation}")
-    private boolean initialisation;
     private static final Logger LOGGER = LoggerFactory.getLogger(DevopsDashboardApplication.class);
 
     @Autowired
