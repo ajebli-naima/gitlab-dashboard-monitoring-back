@@ -4,6 +4,12 @@ import com.leyton.backend.dto.CommitPerUserDTO;
 import com.leyton.backend.dto.FilterRequest;
 import com.leyton.backend.dto.StaticticByUnitDto;
 import com.leyton.backend.entities.Application;
+import com.leyton.backend.mappers.CommitMapper;
+import com.leyton.backend.mappers.MemberMapper;
+import com.leyton.backend.mappers.ProjectMapper;
+import com.leyton.backend.repositories.CommitRepository;
+import com.leyton.backend.repositories.MemberRepository;
+import com.leyton.backend.repositories.ProjectRepository;
 import com.leyton.backend.services.ApplicationService;
 import com.leyton.backend.services.GitlabService;
 import org.gitlab4j.api.GitLabApi;
@@ -22,6 +28,8 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,8 +45,23 @@ public class GitlabServiceImpl implements GitlabService {
     private static final Logger LOGGER = LoggerFactory.getLogger(GitlabServiceImpl.class);
 
     @Autowired
+    CommitRepository commitRepository;
+    @Autowired
     ApplicationService applicationService;
+    @Autowired
+    CommitMapper commitMapper;
     GitLabApi gitLabApi;
+
+
+    @Autowired
+    ProjectRepository projectRepository;
+    @Autowired
+    MemberRepository memberRepository;
+
+    @Autowired
+    ProjectMapper projectMapper;
+    @Autowired
+    MemberMapper memberMapper;
 
     @Override
     public List<Project> findAllProjects(int idProject) throws GitLabApiException {
@@ -46,12 +69,13 @@ public class GitlabServiceImpl implements GitlabService {
 
         Application application = applicationService.findApplication(Long.valueOf(idProject));
         String path = application.getUrlGitlab().split("http://gitlab.leyton.fr/")[1];
+        List<Project> projects = gitLabApi.getGroupApi().getProjects(path);
+        if (projects.isEmpty()) {
+            projects = Arrays.asList(gitLabApi.getProjectApi().getProject(path));
+        }
 
-        gitLabApi.getUserApi().getActiveUsers();
-
-        List<Project> projects = gitLabApi.getProjectApi().getProjects().stream().filter(project -> {
-            return project.getHttpUrlToRepo().contains(path);
-        }).collect(Collectors.toList());
+        //this.startCron();
+        //List<Project> list = gitLabApi.getProjectApi().getProjects();
 
         return projects;
 
@@ -239,7 +263,88 @@ public class GitlabServiceImpl implements GitlabService {
     }
 
 
+    public void startCron() throws GitLabApiException {
+
+        List<Project> list = gitLabApi.getProjectApi().getProjects();
+
+        /**
+         List<Event> events = gitLabApi.getEventsApi().getUserEvents("fchablou",null,null,null,null, Constants.SortOrder.DESC);
+         **/
+
+
+        //saving Project list
+        List<Project> projectList = gitLabApi.getProjectApi().getProjects();
+        List<com.leyton.backend.entities.Project> toProjectDTOs = projectMapper.toProjectDTOs(projectList);
+
+        for (int i = 0; i < toProjectDTOs.size(); i++) {
+            try {
+                projectRepository.save(toProjectDTOs.get(i));
+
+            } catch (Exception e) {
+                // LOGGER.error(e.get());
+            }
+        }
+        //projectRepository.saveAll(toProjectDTOs);
+
+        //saving memeber List
+        List<User> userList = gitLabApi.getUserApi().getActiveUsers();
+        List<com.leyton.backend.entities.Member> memberList = memberMapper.toMemberDTOs(userList);
+        //memberRepository.saveAll(memberList);
+        for (int i = 0; i < memberList.size(); i++) {
+            try {
+                memberRepository.save(memberList.get(0));
+            } catch (Exception e) {
+                // LOGGER.error(e.getMessage());
+            }
+        }
+
+        List<com.leyton.backend.entities.Commit> commitArrayListDto = new ArrayList<>();
+        for (int i = 0; i < projectList.size(); i++) {
+            List<Commit> commits = new ArrayList<>();
+
+            System.out.println("id Prpject" + projectList.get(i).getId());
+            System.out.println("id Prpject" + projectList.get(i).getName());
+            List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(projectList.get(i).getId());
+            for (Branch b : branches) {
+                System.out.println("id branch" + b.getName());
+                try {
+                    commits.addAll(gitLabApi.getCommitsApi().getCommits(projectList.get(i).getId(),
+                            b.getName(), ""));
+                } catch (Exception e) {
+
+                }
+            }
+            List<com.leyton.backend.entities.Commit> commitList = new ArrayList<>();
+            for (Commit commit : commits) {
+                com.leyton.backend.entities.Commit commitDto = commitMapper.commitToCommitDTO(commit);
+                commitDto.setIdProject(projectList.get(i).getId());
+                commitList.add(commitDto);
+            }
+            commitArrayListDto.addAll(commitList);
+            System.out.println(i);
+        }
+
+
+        Set<String> nameSet = new HashSet<>();
+        List<com.leyton.backend.entities.Commit> commitList = commitArrayListDto.stream()
+                .filter(e -> nameSet.add(e.getIdCommit()))
+                .collect(Collectors.toList());
+
+
+        // List<com.leyton.backend.entities.Commit> listt = commitMapper.toCommitDTOs(commitList);
+        commitRepository.saveAll(commitList);
+
+
+    }
+
+
+    private Date yesterday() {
+        final Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DATE, -2);
+        return cal.getTime();
+    }
+
     void authentificationGitlab() throws GitLabApiException {
-        gitLabApi = new GitLabApi("http://gitlab.leyton.fr/", "kyBE1mcB3mxSrse8yiqq");
+        gitLabApi = new GitLabApi("http://172.16.0.112/", "kyBE1mcB3mxSrse8yiqq");
     }
 }
