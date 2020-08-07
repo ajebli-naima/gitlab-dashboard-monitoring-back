@@ -1,9 +1,11 @@
 package com.leyton.backend.services.impl;
 
+import com.leyton.backend.entities.LastCron;
 import com.leyton.backend.mappers.CommitMapper;
 import com.leyton.backend.mappers.MemberMapper;
 import com.leyton.backend.mappers.ProjectMapper;
 import com.leyton.backend.repositories.CommitRepository;
+import com.leyton.backend.repositories.LastCronRepository;
 import com.leyton.backend.repositories.MemberRepository;
 import com.leyton.backend.repositories.ProjectRepository;
 import com.leyton.backend.services.CronService;
@@ -18,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -30,13 +34,14 @@ import java.util.stream.Collectors;
 public class CronServiceImpl implements CronService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CronServiceImpl.class);
 
-
     @Autowired
     CommitRepository commitRepository;
     @Autowired
     ProjectRepository projectRepository;
     @Autowired
     MemberRepository memberRepository;
+    @Autowired
+    LastCronRepository lastCronRepository;
     @Autowired
     CommitMapper commitMapper;
     @Autowired
@@ -46,16 +51,30 @@ public class CronServiceImpl implements CronService {
     GitLabApi gitLabApi;
 
     @Override
-    public void startCron(boolean initialisation) throws GitLabApiException {
+    public void startCron() throws GitLabApiException, ParseException {
 
         this.authentificationGitlab();
+
+        Date lastSynch;
+        Date currentDate = new Date();
+        LastCron lastCron;
+        List<LastCron> lastCrons = lastCronRepository.findAll();
+        if (!lastCrons.isEmpty()) {
+            lastCron = lastCrons.get(0);
+            lastSynch = lastCron.getLastSynch();
+            lastCron.setLastSynch(currentDate);
+        } else {
+            String date = "10/11/1997";
+            lastSynch = new SimpleDateFormat("dd/MM/yyyy").parse(date);
+            lastCron = new LastCron();
+            lastCron.setLastSynch(currentDate);
+        }
+        lastCronRepository.save(lastCron);
 
         //saving Projects list
         List<Project> projectList = gitLabApi.getProjectApi().getProjects();
         List<com.leyton.backend.entities.Project> toProjectDTOs = projectMapper.toProjectDTOs(projectList);
-
         LOGGER.info("Projects size:", projectList.size());
-
 
         for (int i = 0; i < toProjectDTOs.size(); i++) {
             try {
@@ -68,11 +87,11 @@ public class CronServiceImpl implements CronService {
         //saving memebers List
         List<User> userList = gitLabApi.getUserApi().getActiveUsers();
         List<com.leyton.backend.entities.Member> memberList = memberMapper.toMemberDTOs(userList);
-
         LOGGER.info("Members size:" + memberList.size());
+
         for (int i = 0; i < memberList.size(); i++) {
             try {
-                memberRepository.save(memberList.get(0));
+                memberRepository.save(memberList.get(i));
             } catch (Exception e) {
                 LOGGER.info("Member already exist");
             }
@@ -88,13 +107,8 @@ public class CronServiceImpl implements CronService {
             for (Branch b : branches) {
                 LOGGER.info("Scaning branch :" + b.getName());
                 try {
-                    if (initialisation) {
-                        commits.addAll(gitLabApi.getCommitsApi().getCommits(projectList.get(i).getId(),
-                                b.getName(), ""));
-                    } else {
-                        commits.addAll(gitLabApi.getCommitsApi().getCommits(projectList.get(i).getId(),
-                                b.getName(), yesterday(), new Date()));
-                    }
+                    commits.addAll(gitLabApi.getCommitsApi().getCommits(projectList.get(i).getId(),
+                            b.getName(), lastSynch, currentDate));
                 } catch (Exception e) {
                     LOGGER.error("error in branch" + b.getName());
                 }
@@ -124,7 +138,7 @@ public class CronServiceImpl implements CronService {
     }
 
     void authentificationGitlab() throws GitLabApiException {
-        gitLabApi = new GitLabApi("http://gitlab.leyton.fr/", "kyBE1mcB3mxSrse8yiqq");
+        gitLabApi = new GitLabApi("http://172.16.0.112/", "kyBE1mcB3mxSrse8yiqq");
     }
 
 }

@@ -340,11 +340,11 @@ public class GitlabServiceImpl implements GitlabService {
 
     private Date yesterday() {
         final Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DATE, -1);
+        cal.add(Calendar.DATE, -2);
         return cal.getTime();
     }
 
     void authentificationGitlab() throws GitLabApiException {
-        gitLabApi = new GitLabApi("http://gitlab.leyton.fr/", "kyBE1mcB3mxSrse8yiqq");
+        gitLabApi = new GitLabApi("http://172.16.0.112/", "kyBE1mcB3mxSrse8yiqq");
     }
 }

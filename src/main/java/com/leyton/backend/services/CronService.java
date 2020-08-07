@@ -2,7 +2,9 @@ package com.leyton.backend.services;
 
 import org.gitlab4j.api.GitLabApiException;
 
+import java.text.ParseException;
+
 public interface CronService {
 
-    void startCron(boolean initialisation) throws GitLabApiException;
+    void startCron() throws GitLabApiException, ParseException;
 }

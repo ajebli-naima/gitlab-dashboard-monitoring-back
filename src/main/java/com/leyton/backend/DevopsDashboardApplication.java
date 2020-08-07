@@ -14,48 +14,37 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.text.ParseException;
+
 @SpringBootApplication
 @EnableScheduling
 public class DevopsDashboardApplication {
 
-
     @Value("${cron.initialisation}")
     private boolean initialisation;
-
     private static final Logger LOGGER = LoggerFactory.getLogger(DevopsDashboardApplication.class);
-
 
     @Autowired
     private CronService cronService;
-
 
     public static void main(String[] args) {
         SpringApplication.run(DevopsDashboardApplication.class, args);
     }
 
 
-    // @Scheduled(cron = "${cron.expression}")
-    public void scheduleDynamicTaskWithCronExpression() throws GitLabApiException {
-
-        this.cronService.startCron(false);
-    }
-
-    //@Scheduled(cron = "0 0/1 * 1/1 * ?")
-    public void cron() {
-        System.out.println("eeee");
+    @Scheduled(cron = "0 0 12 * * ?")
+    @Scheduled(cron = "0 0 18 * * ?")
+    public void cron() throws GitLabApiException, ParseException {
+        this.cronService.startCron();
     }
 
 
     @Bean
     public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
         return args -> {
-            if (initialisation) {
-                this.cronService.startCron(false);
-            }
+                this.cronService.startCron();
         };
     }
-
-
 }
 
 
