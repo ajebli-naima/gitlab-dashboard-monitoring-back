@@ -13,6 +13,7 @@ import org.gitlab4j.api.GitLabApi;
 import org.gitlab4j.api.GitLabApiException;
 import org.gitlab4j.api.models.Branch;
 import org.gitlab4j.api.models.Commit;
+import org.gitlab4j.api.models.MergeRequest;
 import org.gitlab4j.api.models.Project;
 import org.gitlab4j.api.models.User;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -102,7 +104,7 @@ public class CronServiceImpl implements CronService {
         for (int i = 0; i < projectList.size(); i++) {
             List<Commit> commits = new ArrayList<>();
 
-            LOGGER.info("Scaning project :" + projectList.get(i).getName());
+            LOGGER.info("Scaning project name {} : id {} : ", projectList.get(i).getName(), projectList.get(i).getId());
             List<Branch> branches = gitLabApi.getRepositoryApi().getBranches(projectList.get(i).getId());
             for (Branch b : branches) {
                 LOGGER.info("Scaning branch :" + b.getName());
@@ -115,9 +117,16 @@ public class CronServiceImpl implements CronService {
             }
             List<com.leyton.backend.entities.Commit> commitList = new ArrayList<>();
             for (Commit commit : commits) {
-                com.leyton.backend.entities.Commit commitDto = commitMapper.commitToCommitDTO(commit);
-                commitDto.setIdProject(projectList.get(i).getId());
-                commitList.add(commitDto);
+                // Optional<MergeRequest> optional = isMergeRequest(mergeRequests, commit.getId());
+                if (!commit.getMessage().contains("Merge branch") || !commit.getMessage().contains("into")
+                        || !commit.getMessage().contains("See merge request")) {
+                    com.leyton.backend.entities.Commit commitDto = commitMapper.commitToCommitDTO(commit);
+                    commitDto.setIdProject(projectList.get(i).getId());
+                    commitList.add(commitDto);
+                } else {
+                    LOGGER.info("Commit id {} is merge request in project {}", commit.getId(), projectList.get(i).getName());
+                    LOGGER.info("commit message {}", commit.getMessage());
+                }
             }
             commitArrayListDto.addAll(commitList);
         }
@@ -130,6 +139,14 @@ public class CronServiceImpl implements CronService {
         commitRepository.saveAll(commitList);
     }
 
+    public Optional<MergeRequest> isMergeRequest(final List<MergeRequest> list, final String commitId) {
+        try {
+            return list.stream().filter(o -> o.getMergeCommitSha().equals(commitId)).findFirst();
+        } catch (Exception e) {
+            LOGGER.error("null in id commit of merge request");
+            return null;
+        }
+    }
 
     private Date yesterday() {
         final Calendar cal = Calendar.getInstance();
