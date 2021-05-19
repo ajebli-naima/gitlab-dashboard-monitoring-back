@@ -30,7 +30,7 @@ public class DevopsDashboardApplication {
     }
 
 
-    @Scheduled(cron = "0 0/30 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 ? * * *")
+    @Scheduled(cron = "*/30 7,8,9,10,11,12,13,14,15,16,17,18,19,20 * * * ?")
     public void cron() throws GitLabApiException, ParseException {
         this.cronService.startCron();
     }
